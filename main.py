@@ -10,12 +10,13 @@ public_key = 'NIVq1rngxerf1OpjY3CJsMCyM580ylkDbe0W833nWiSl3azstCCCB6v9orQMHd3v'
 secret_key = 'MOjRytV4EPCImVp9uRZhoN1cTVA12iETbKUxx92JnoMFFRce97tAdAd2yeAginqc'
 
 df = None
-trade_placed = False
+trade_executed = False
 trade_enter_price = 0
+trade_amount = 0
 
 
 def process_message(msg):
-    global df, trade_placed, trade_enter_price
+    global df, trade_executed, trade_enter_price, trade_amount
     candle = msg['k']
     is_final = candle['x']
 
@@ -52,24 +53,48 @@ def process_message(msg):
 
         # Execute Strategy
         plus = df['DMP_14'].iat[-1]
+        prev_plus = df['DMP_14'].iat[-2]
         ac = df['AC'].iat[-1]
         ac_change = ac - df['AC'].iat[-2]
         open_time_formatted = datetime.datetime.fromtimestamp(int(open_time) / 1000)
-        print('[%s] %s Close: %0.8f | +DI: %0.8f | AC: %0.8f' % (open_time_formatted, 'ETHBTC', close, plus, ac))
+        print('[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f' % (open_time_formatted, 'XTZBTC', close, plus, ac))
 
-        buy = (plus < 10 and ac < 0 and ac_change > 0) and not trade_placed
-        sell = ((plus > 20 and ac > 0 and ac_change <= 0) or (close < trade_enter_price * 0.995)) and trade_placed
+        buy = ((plus < 10 or prev_plus < 10) and ac < 0 and ac_change > 0) and not trade_executed
+        sell = (((plus > 20 or prev_plus > 20) and ac > 0 and ac_change <= 0) or (
+                    close < trade_enter_price * 0.995)) and trade_executed
 
         if buy:
             print('[Alert] Buy ETHUSD at price %0.8f' % close)
-            trade_placed = True
-            trade_enter_price = close
+            trade_amount = "{:0.0{}f}".format(0.13 / close, 5)
+            order = client.create_margin_order(
+                symbol='XTZBTC',
+                side=SIDE_BUY,
+                type=ORDER_TYPE_MARKET,
+                quantity=trade_amount
+            )
+            if order['status'] == "FILLED":
+                print('[Order] Bought %s ETHUSD at %0.8f' % (trade_amount, close))
+                trade_executed = True
+                trade_enter_price = close
+            else:
+                print('[ERROR] Order to buy %s ETHUSD at %0.8f was not filled' % (trade_amount, close))
 
         if sell:
             profit_pct = (close - trade_enter_price) / trade_enter_price * 100
             print('[Alert] Sell ETHUSD at price %0.8f. Profit: %0.2f%%' % (close, profit_pct))
-            trade_placed = False
-            trade_enter_price = 0
+            order = client.create_margin_order(
+                symbol='XTZBTC',
+                side=SIDE_SELL,
+                type=ORDER_TYPE_MARKET,
+                quantity=trade_amount
+            )
+            if order['status'] == "FILLED":
+                print('[Order] Sold %s ETHUSD at %0.8f' % (trade_amount, close))
+                trade_executed = False
+                trade_enter_price = 0
+                trade_amount = 0
+            else:
+                print('[ERROR] Order to sell %s ETHUSD at %0.8f was not filled' % (trade_amount, close))
 
 
 # Add heiken ashi candles to dataframe
@@ -90,7 +115,7 @@ def add_heiken_ashi():
 client = Client(public_key, secret_key)
 
 # Load historical candles into dataframe
-historical_klines = client.get_historical_klines('ETHBTC', Client.KLINE_INTERVAL_1MINUTE, '1 day ago UTC')
+historical_klines = client.get_historical_klines('XTZBTC', Client.KLINE_INTERVAL_1MINUTE, '1 day ago UTC')
 historical_candles = map(lambda kline: kline[:7], historical_klines)
 column_names = ['open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time']
 df = pd.DataFrame(data=historical_candles, columns=column_names)
@@ -103,5 +128,5 @@ add_heiken_ashi()
 
 # Start listening for live candles
 bm = BinanceSocketManager(client, user_timeout=60)
-conn_key = bm.start_kline_socket('ETHBTC', process_message, interval=KLINE_INTERVAL_1MINUTE)
+conn_key = bm.start_kline_socket('XTZBTC', process_message, interval=KLINE_INTERVAL_5MINUTE)
 bm.start()
