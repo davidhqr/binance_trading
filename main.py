@@ -1,12 +1,12 @@
 import datetime
 
+import pandas as pd
 from binance.client import Client
 from binance.enums import *
 from binance.websockets import BinanceSocketManager
-import pandas as pd
-import pandas_ta as ta
 
 TICKER = 'XTZBTC'
+SYMBOL = 'XTZ'
 public_key = 'NIVq1rngxerf1OpjY3CJsMCyM580ylkDbe0W833nWiSl3azstCCCB6v9orQMHd3v'
 secret_key = 'MOjRytV4EPCImVp9uRZhoN1cTVA12iETbKUxx92JnoMFFRce97tAdAd2yeAginqc'
 
@@ -14,6 +14,16 @@ df = None
 trade_executed = False
 trade_enter_price = 0
 trade_amount = 0
+
+
+def get_asset_balance(asset):
+    account = client.get_margin_account()
+    assets = account['userAssets']
+    result = list(filter(lambda x: x['asset'] == asset, assets))
+    if len(result) == 1:
+        return float(result[0]['free'])
+    else:
+        return None
 
 
 def process_message(msg):
@@ -62,11 +72,11 @@ def process_message(msg):
 
         buy = ((plus < 10 or prev_plus < 10) and ac < 0 and ac_change > 0) and not trade_executed
         sell = (((plus > 20 or prev_plus > 20) and ac > 0 and ac_change <= 0) or (
-                    close < trade_enter_price * 0.995)) and trade_executed
+                close < trade_enter_price * 0.995)) and trade_executed
 
         if buy:
             print('[Alert] Buy %s at price %0.8f' % (TICKER, close))
-            trade_amount = round(0.13 / 0.0002584, 2)
+            trade_amount = round(0.14 / close, 2)
             order = client.create_margin_order(
                 symbol=TICKER,
                 side=SIDE_BUY,
@@ -82,13 +92,13 @@ def process_message(msg):
 
         if sell:
             profit_pct = (close - trade_enter_price) / trade_enter_price * 100
-            max_amount = round(trade_amount * 0.995, 2)
+            sell_amount = get_asset_balance(SYMBOL) // 0.01 * 0.01  # round down to 2 decimals
             print('[Alert] Sell %s at price %0.8f. Profit: %0.2f%%' % (TICKER, close, profit_pct))
             order = client.create_margin_order(
                 symbol=TICKER,
                 side=SIDE_SELL,
                 type=ORDER_TYPE_MARKET,
-                quantity=max_amount
+                quantity=sell_amount
             )
             if order['status'] == "FILLED":
                 print('[Order] Sold %s %s at %0.8f' % (trade_amount, TICKER, close))
