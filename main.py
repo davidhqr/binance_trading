@@ -1,12 +1,14 @@
 import datetime
 
 import pandas as pd
+import pandas_ta as ta
 from binance.client import Client
 from binance.enums import *
 from binance.websockets import BinanceSocketManager
 
+MAIN_SYMBOL = 'BTC'
+FOREIGN_SYMBOL = 'XTZ'
 TICKER = 'XTZBTC'
-SYMBOL = 'XTZ'
 public_key = 'NIVq1rngxerf1OpjY3CJsMCyM580ylkDbe0W833nWiSl3azstCCCB6v9orQMHd3v'
 secret_key = 'MOjRytV4EPCImVp9uRZhoN1cTVA12iETbKUxx92JnoMFFRce97tAdAd2yeAginqc'
 
@@ -76,7 +78,7 @@ def process_message(msg):
 
         if buy:
             print('[Alert] Buy %s at price %0.8f' % (TICKER, close))
-            trade_amount = round(0.14 / close, 2)
+            trade_amount = round((get_asset_balance(MAIN_SYMBOL) * 0.98) / close, 2)
             order = client.create_margin_order(
                 symbol=TICKER,
                 side=SIDE_BUY,
@@ -92,7 +94,7 @@ def process_message(msg):
 
         if sell:
             profit_pct = (close - trade_enter_price) / trade_enter_price * 100
-            sell_amount = get_asset_balance(SYMBOL) // 0.01 * 0.01  # round down to 2 decimals
+            sell_amount = get_asset_balance(FOREIGN_SYMBOL) // 0.01 * 0.01  # round down to 2 decimals
             print('[Alert] Sell %s at price %0.8f. Profit: %0.2f%%' % (TICKER, close, profit_pct))
             order = client.create_margin_order(
                 symbol=TICKER,
@@ -101,7 +103,7 @@ def process_message(msg):
                 quantity=sell_amount
             )
             if order['status'] == "FILLED":
-                print('[Order] Sold %s %s at %0.8f' % (trade_amount, TICKER, close))
+                print('[Order] Sold %s %s at %0.8f' % (sell_amount, TICKER, close))
                 trade_executed = False
                 trade_enter_price = 0
                 trade_amount = 0
