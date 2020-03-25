@@ -77,38 +77,40 @@ def process_message(msg):
                 close < trade_enter_price * 0.995)) and trade_executed
 
         if buy:
-            print('[Alert] Buy %s at price %0.8f' % (TICKER, close))
             trade_amount = round((get_asset_balance(MAIN_SYMBOL) * 0.98) / close, 2)
+            print('[Alert] Buy %s of %s at price %0.8f' % (trade_amount, TICKER, close))
             order = client.create_margin_order(
                 symbol=TICKER,
                 side=SIDE_BUY,
                 type=ORDER_TYPE_MARKET,
-                quantity=trade_amount
+                quantity=50
             )
             if order['status'] == "FILLED":
-                print('[Order] Bought %s %s at %0.8f' % (trade_amount, TICKER, close))
+                print('[Order] Bought %s of %s at %0.8f' % (trade_amount, TICKER, close))
                 trade_executed = True
                 trade_enter_price = close
             else:
-                print('[ERROR] Order to buy %s %s at %0.8f was not filled' % (trade_amount, TICKER, close))
+                print('[ERROR] Order to buy %s of %s at %0.8f was not filled' % (trade_amount, TICKER, close))
 
         if sell:
             profit_pct = (close - trade_enter_price) / trade_enter_price * 100
             sell_amount = get_asset_balance(FOREIGN_SYMBOL) // 0.01 * 0.01  # round down to 2 decimals
-            print('[Alert] Sell %s at price %0.8f. Profit: %0.2f%%' % (TICKER, close, profit_pct))
+            formatted_sell_amount = "{:0.0{}f}".format(sell_amount, 2)
+            print('[Alert] Sell %s of %s at price %0.8f. Profit: %0.2f%%' % (
+                formatted_sell_amount, TICKER, close, profit_pct))
             order = client.create_margin_order(
                 symbol=TICKER,
                 side=SIDE_SELL,
                 type=ORDER_TYPE_MARKET,
-                quantity=sell_amount
+                quantity=formatted_sell_amount
             )
             if order['status'] == "FILLED":
-                print('[Order] Sold %s %s at %0.8f' % (sell_amount, TICKER, close))
+                print('[Order] Sold %s of %s at %0.8f' % (sell_amount, TICKER, close))
                 trade_executed = False
                 trade_enter_price = 0
                 trade_amount = 0
             else:
-                print('[ERROR] Order to sell %s %s at %0.8f was not filled' % (trade_amount, TICKER, close))
+                print('[ERROR] Order to sell %s of %s at %0.8f was not filled' % (trade_amount, TICKER, close))
 
 
 # Add heiken ashi candles to dataframe
@@ -129,7 +131,7 @@ def add_heiken_ashi():
 client = Client(public_key, secret_key)
 
 # Load historical candles into dataframe
-historical_klines = client.get_historical_klines(TICKER, Client.KLINE_INTERVAL_1MINUTE, '1 day ago UTC')
+historical_klines = client.get_historical_klines(TICKER, Client.KLINE_INTERVAL_5MINUTE, '1 day ago UTC')
 historical_candles = map(lambda kline: kline[:7], historical_klines)
 column_names = ['open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time']
 df = pd.DataFrame(data=historical_candles, columns=column_names)
