@@ -47,6 +47,7 @@ def process_message(msg):
     candle = msg['k']
     is_final = candle['x']
 
+    logging.info("Process msg: ", msg)
     if is_final and df['close_time'].iat[-1] != candle['T']:
         # Append candle to dataframe
         open_time = candle['t']
@@ -145,7 +146,7 @@ def add_heiken_ashi():
 
 
 # Run program
-logging.info("Starting binance trading bot")
+logging.info("Starting Binance trading bot")
 client = Client(public_key, secret_key)
 
 # Load historical candles into dataframe
@@ -163,4 +164,5 @@ add_heiken_ashi()
 # Start listening for live candles
 bm = BinanceSocketManager(client, user_timeout=60)
 conn_key = bm.start_kline_socket(TICKER, process_message, interval=KLINE_INTERVAL_5MINUTE)
+logging.info("Starting Binance API websocket")
 bm.start()
