@@ -1,0 +1,35 @@
+[26/03/2020 20:06:53] Starting binance trading bot
+[26/03/2020 20:06:53] Starting new HTTPS connection (1): api.binance.com:443
+[26/03/2020 20:06:53] https://api.binance.com:443 "GET /api/v1/ping HTTP/1.1" 200 None
+[26/03/2020 20:06:53] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=1&startTime=0&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 20:06:53] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=500&startTime=1585192013669&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 20:15:07] [2020-03-26 20:10:00] XTZBTC | Close: 0.00025833 | +DI: 14.33021933 | AC: 0.00000004
+[26/03/2020 20:24:10] Starting binance trading bot
+[26/03/2020 20:24:10] Starting new HTTPS connection (1): api.binance.com:443
+[26/03/2020 20:24:10] https://api.binance.com:443 "GET /api/v1/ping HTTP/1.1" 200 None
+[26/03/2020 20:24:11] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=1&startTime=0&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 20:24:11] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=500&startTime=1585193050836&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 20:31:29] [2020-03-26 20:25:00] XTZBTC | Close: 0.00025825 | +DI: 12.87184274 | AC: -0.00000002
+[26/03/2020 21:00:10] Starting binance trading bot
+[26/03/2020 21:00:10] Starting new HTTPS connection (1): api.binance.com:443
+[26/03/2020 21:00:10] https://api.binance.com:443 "GET /api/v1/ping HTTP/1.1" 200 None
+[26/03/2020 21:00:11] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=1&startTime=0&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 21:00:11] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=500&startTime=1585195210907&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 21:01:51] Starting binance trading bot
+[26/03/2020 21:01:51] Starting new HTTPS connection (1): api.binance.com:443
+[26/03/2020 21:01:51] https://api.binance.com:443 "GET /api/v1/ping HTTP/1.1" 200 None
+[26/03/2020 21:01:52] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=1&startTime=0&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 21:01:52] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=500&startTime=1585195311947&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 21:19:13] Starting binance trading bot
+[26/03/2020 21:19:13] Starting new HTTPS connection (1): api.binance.com:443
+[26/03/2020 21:19:13] https://api.binance.com:443 "GET /api/v1/ping HTTP/1.1" 200 None
+[26/03/2020 21:19:13] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=1&startTime=0&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 21:19:14] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=500&startTime=1585196353855&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 21:25:05] [2020-03-26 21:20:00] XTZBTC | Close: 0.00025970 | +DI: 22.27953565 | AC: 0.00000032
+[26/03/2020 21:30:03] [2020-03-26 21:25:00] XTZBTC | Close: 0.00025990 | +DI: 25.89916502 | AC: 0.00000024
+[26/03/2020 21:35:07] [2020-03-26 21:30:00] XTZBTC | Close: 0.00026030 | +DI: 29.04532081 | AC: 0.00000015
+[26/03/2020 22:02:48] Starting binance trading bot
+[26/03/2020 22:02:48] Starting new HTTPS connection (1): api.binance.com:443
+[26/03/2020 22:02:49] https://api.binance.com:443 "GET /api/v1/ping HTTP/1.1" 200 None
+[26/03/2020 22:02:49] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=1&startTime=0&symbol=XTZBTC HTTP/1.1" 200 None
+[26/03/2020 22:02:49] https://api.binance.com:443 "GET /api/v1/klines?interval=5m&limit=500&startTime=1585198969154&symbol=XTZBTC HTTP/1.1" 200 None

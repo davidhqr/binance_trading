@@ -2,12 +2,21 @@
 
 import datetime
 import logging
+import os
+import sys
 
 import pandas as pd
 import pandas_ta as ta
 from binance.client import Client
 from binance.enums import *
 from binance.websockets import BinanceSocketManager
+
+# Add vendor directory to module search path
+parent_dir = os.path.abspath(os.path.dirname(__file__))
+vendor_dir = os.path.join(parent_dir, 'vendor')
+sys.path.append(vendor_dir)
+
+import pandas_ta as ta
 
 MAIN_SYMBOL = 'BTC'
 FOREIGN_SYMBOL = 'XTZ'
@@ -39,7 +48,7 @@ def process_message(msg):
     candle = msg['k']
     is_final = candle['x']
 
-    if is_final:
+    if is_final and df['close_time'].iat[-1] != candle['T']:
         # Append candle to dataframe
         open_time = candle['t']
         open_ = float(candle['o'])
@@ -65,26 +74,28 @@ def process_message(msg):
             'ha_low': ha_low
         }, ignore_index=True)
 
-        df.ta.adx('ha_high', 'ha_low', 'ha_close', length=14, append=True)
-        df.ta.ao('ha_high', 'ha_low', append=True)
-        df.ta.sma('AO_5_34', 5, append=True)
+        df.ta.adx(df['ha_high'], df['ha_low'], drift=1, length=14, append=True)
+        df.ta.ao(df['ha_high'], df['ha_low'], append=True)
+        df.ta.sma(df['AO_5_34'], 5, append=True)
         df['AC'] = df['AO_5_34'] - df['SMA_5']
 
         # Execute Strategy
+        temp = df
         plus = df['DMP_14'].iat[-1]
         prev_plus = df['DMP_14'].iat[-2]
         ac = df['AC'].iat[-1]
         ac_change = ac - df['AC'].iat[-2]
         open_time_formatted = datetime.datetime.fromtimestamp(int(open_time) / 1000)
-        logging.info('[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f' % (open_time_formatted, TICKER, close, plus, ac))
+        logging.info(
+            '[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f' % (open_time_formatted, TICKER, ha_close, plus, ac))
 
         buy = ((plus < 10 or prev_plus < 10) and ac < 0 and ac_change > 0) and not trade_executed
         sell = (((plus > 20 or prev_plus > 20) and ac > 0 and ac_change <= 0) or (
-                close < trade_enter_price * 0.995)) and trade_executed
+                ha_close < trade_enter_price * 0.995)) and trade_executed
 
         if buy:
-            trade_amount = round((get_asset_balance(MAIN_SYMBOL) * 0.98) / close, 2)
-            logging.info('[Alert] Buy %s of %s at price %0.8f' % (trade_amount, TICKER, close))
+            trade_amount = round((get_asset_balance(MAIN_SYMBOL) * 0.98) / ha_close, 2)
+            logging.info('[Alert] Buy %s of %s at price %0.8f' % (trade_amount, TICKER, ha_close))
             order = client.create_margin_order(
                 symbol=TICKER,
                 side=SIDE_BUY,
@@ -92,18 +103,18 @@ def process_message(msg):
                 quantity=trade_amount
             )
             if order['status'] == "FILLED":
-                logging.info('[Order] Bought %s of %s at %0.8f' % (trade_amount, TICKER, close))
+                logging.info('[Order] Bought %s of %s at %0.8f' % (trade_amount, TICKER, ha_close))
                 trade_executed = True
-                trade_enter_price = close
+                trade_enter_price = ha_close
             else:
-                logging.info('[ERROR] Order to buy %s of %s at %0.8f was not filled' % (trade_amount, TICKER, close))
+                logging.info('[ERROR] Order to buy %s of %s at %0.8f was not filled' % (trade_amount, TICKER, ha_close))
 
         if sell:
-            profit_pct = (close - trade_enter_price) / trade_enter_price * 100
+            profit_pct = (ha_close - trade_enter_price) / trade_enter_price * 100
             sell_amount = get_asset_balance(FOREIGN_SYMBOL) // 0.01 * 0.01  # round down to 2 decimals
             formatted_sell_amount = "{:0.0{}f}".format(sell_amount, 2)
             logging.info('[Alert] Sell %s of %s at price %0.8f. Profit: %0.2f%%' % (
-                formatted_sell_amount, TICKER, close, profit_pct))
+                formatted_sell_amount, TICKER, ha_close, profit_pct))
             order = client.create_margin_order(
                 symbol=TICKER,
                 side=SIDE_SELL,
@@ -111,12 +122,13 @@ def process_message(msg):
                 quantity=formatted_sell_amount
             )
             if order['status'] == "FILLED":
-                logging.info('[Order] Sold %s of %s at %0.8f' % (sell_amount, TICKER, close))
+                logging.info('[Order] Sold %s of %s at %0.8f' % (sell_amount, TICKER, ha_close))
                 trade_executed = False
                 trade_enter_price = 0
                 trade_amount = 0
             else:
-                logging.info('[ERROR] Order to sell %s of %s at %0.8f was not filled' % (trade_amount, TICKER, close))
+                logging.info(
+                    '[ERROR] Order to sell %s of %s at %0.8f was not filled' % (trade_amount, TICKER, ha_close))
 
 
 # Add heiken ashi candles to dataframe
