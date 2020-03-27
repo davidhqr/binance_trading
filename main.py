@@ -73,7 +73,7 @@ def process_message(msg):
             'ha_low': ha_low
         }, ignore_index=True)
 
-        df.ta.adx(df['ha_high'], df['ha_low'], drift=1, length=14, append=True)
+        df.ta.adx(df['ha_high'], df['ha_low'], drift=1, length=14, offset=-0.2, append=True)
         df.ta.ao(df['ha_high'], df['ha_low'], append=True)
         df.ta.sma(df['AO_5_34'], 5, append=True)
         df['AC'] = df['AO_5_34'] - df['SMA_5']
