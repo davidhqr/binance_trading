@@ -6,7 +6,6 @@ import os
 import sys
 
 import pandas as pd
-import pandas_ta as ta
 from binance.client import Client
 from binance.enums import *
 from binance.websockets import BinanceSocketManager
