@@ -48,7 +48,6 @@ def process_message(msg):
     is_final = candle['x']
 
     if is_final and df['close_time'].iat[-1] != candle['T']:
-        logging.info("Processing candle: %s", candle)
         # Append candle to dataframe
         open_time = candle['t']
         open_ = float(candle['o'])
@@ -158,11 +157,9 @@ df['low'] = df['low'].astype(float)
 df['close'] = df['close'].astype(float)
 df['volume'] = df['volume'].astype(float)
 add_heiken_ashi()
-logging.info("Dataframe with historical data:")
-logging.info(df)
 
 # Start listening for live candles
 bm = BinanceSocketManager(client, user_timeout=60)
 conn_key = bm.start_kline_socket(TICKER, process_message, interval=KLINE_INTERVAL_5MINUTE)
-logging.info("Starting Binance API websocket")
+logging.info("Starting websocket")
 bm.start()
