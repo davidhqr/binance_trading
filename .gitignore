@@ -1,4 +1,7 @@
+/.idea/
 .idea/
+binance_trading.log
+nohup.out
 
 # dotenv
 .env
