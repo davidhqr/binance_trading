@@ -160,6 +160,8 @@ df['low'] = df['low'].astype(float)
 df['close'] = df['close'].astype(float)
 df['volume'] = df['volume'].astype(float)
 add_heiken_ashi()
+logging.info("Dataframe with historical data:")
+logging.info(df)
 
 # Start listening for live candles
 bm = BinanceSocketManager(client, user_timeout=60)
