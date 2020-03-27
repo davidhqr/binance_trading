@@ -20,7 +20,7 @@ def atr(high, low, close, length=None, mamode=None, drift=None, offset=None, **k
     if mamode == 'ema':
         atr = tr.ewm(span=length, min_periods=min_periods).mean()
     elif mamode == "rma":
-        atr = tr.rma(close=tr, length=length)
+        atr = rma(close=tr, length=length)
     else:
         atr = tr.rolling(length, min_periods=min_periods).mean()
 
