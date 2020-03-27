@@ -47,7 +47,7 @@ def process_message(msg):
     candle = msg['k']
     is_final = candle['x']
 
-    logging.info("Process msg: ", msg)
+    logging.info("Process msg: %s", msg)
     if is_final and df['close_time'].iat[-1] != candle['T']:
         # Append candle to dataframe
         open_time = candle['t']
@@ -80,7 +80,6 @@ def process_message(msg):
         df['AC'] = df['AO_5_34'] - df['SMA_5']
 
         # Execute Strategy
-        temp = df
         plus = df['DMP_14'].iat[-1]
         prev_plus = df['DMP_14'].iat[-2]
         ac = df['AC'].iat[-1]
