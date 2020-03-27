@@ -73,14 +73,14 @@ def process_message(msg):
             'ha_low': ha_low
         }, ignore_index=True)
 
-        df.ta.adx(df['ha_high'], df['ha_low'], drift=1, length=14, offset=-0.2, append=True)
+        df.ta.adx(df['ha_high'], df['ha_low'], drift=1, length=14, append=True)
         df.ta.ao(df['ha_high'], df['ha_low'], append=True)
         df.ta.sma(df['AO_5_34'], 5, append=True)
         df['AC'] = df['AO_5_34'] - df['SMA_5']
 
         # Execute Strategy
-        plus = df['DMP_14'].iat[-1]
-        prev_plus = df['DMP_14'].iat[-2]
+        plus = df['DMP_14'].iat[-1] - 0.2
+        prev_plus = df['DMP_14'].iat[-2] - 0.2
         ac = df['AC'].iat[-1]
         ac_change = ac - df['AC'].iat[-2]
         open_time_formatted = datetime.datetime.fromtimestamp(int(open_time) / 1000)
