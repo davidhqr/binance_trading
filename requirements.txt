@@ -2,4 +2,3 @@ python-binance
 plotly
 pandas
 numpy
-pandas_ta
