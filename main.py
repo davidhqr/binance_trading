@@ -148,7 +148,7 @@ client = Client(public_key, secret_key)
 
 # Load historical candles into dataframe
 historical_klines = client.get_historical_klines(TICKER, Client.KLINE_INTERVAL_5MINUTE, '1 day ago UTC')
-historical_candles = list(map(lambda kline: kline[:7], historical_klines))
+historical_candles = list(map(lambda kline: kline[:7], historical_klines))[:-1]
 column_names = ['open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time']
 df = pd.DataFrame(data=historical_candles, columns=column_names)
 df['open_time'] = df['open_time'].apply(lambda x: datetime.datetime.fromtimestamp(int(x) / 1000))
@@ -158,6 +158,8 @@ df['low'] = df['low'].astype(float)
 df['close'] = df['close'].astype(float)
 df['volume'] = df['volume'].astype(float)
 df['close_time'] = df['close_time'].apply(lambda x: datetime.datetime.fromtimestamp(int(x) / 1000))
+
+# add heiken ashi candles and indicators
 add_heiken_ashi()
 df.ta.adx(high=df['ha_high'], low=df['ha_low'], close=df['ha_close'], length=14, append=True)
 df.ta.ao(high=df['ha_high'], low=df['ha_low'], append=True)
