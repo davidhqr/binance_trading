@@ -13,6 +13,7 @@ from binance.websockets import BinanceSocketManager
 # Add vendor directory to module search path
 parent_dir = os.path.abspath(os.path.dirname(__file__))
 vendor_dir = os.path.join(parent_dir, 'vendor')
+print(vendor_dir)
 sys.path.append(vendor_dir)
 
 import pandas_ta as ta
@@ -46,11 +47,11 @@ def process_message(msg):
     global df, trade_executed, trade_enter_price, trade_amount
     candle = msg['k']
     is_final = candle['x']
+    open_time = datetime.datetime.fromtimestamp(int(candle['t']) / 1000)
     close_time = datetime.datetime.fromtimestamp(int(candle['T']) / 1000)
 
-    if is_final and df['close_time'].iat[-1] != close_time:
+    if is_final and df['open_time'].iat[-1] != open_time:
         # Append candle to dataframe
-        open_time = datetime.datetime.fromtimestamp(int(candle['t']) / 1000)
         open_ = float(candle['o'])
         high = float(candle['h'])
         low = float(candle['l'])
@@ -163,7 +164,7 @@ df.ta.ao(high=df['ha_high'], low=df['ha_low'], append=True)
 df.ta.sma(close=df['AO_5_34'], length=5, append=True)
 df['AC'] = df['AO_5_34'] - df['SMA_5']
 
-logging.info('[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', df['close_time'].iat[-1], TICKER,
+logging.info('[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', df['open_time'].iat[-1], TICKER,
              df['ha_close'].iat[-1], df['DMP_14'].iat[-1], df['AC'].iat[-1])
 
 # Start listening for live candles
