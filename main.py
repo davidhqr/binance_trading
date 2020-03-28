@@ -84,7 +84,7 @@ def process_message(msg):
         ac = df['AC'].iat[-1]
         ac_change = ac - df['AC'].iat[-2]
         logging.info(
-            '[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', close_time, TICKER, ha_close, plus, ac)
+            '[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', open_time, TICKER, ha_close, plus, ac)
 
         buy = ((plus < 11.8 or prev_plus < 11.8) and ac < 0 and ac_change > 0) and not trade_executed
         sell = (((plus > 20.2 or prev_plus > 20.2) and ac > 0 and ac_change <= 0) or (
