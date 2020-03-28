@@ -73,39 +73,39 @@ def process_message(msg):
             'ha_low': ha_low
         }, ignore_index=True)
 
-        df.ta.adx(df['ha_high'], df['ha_low'], drift=1, length=14, append=True)
-        df.ta.ao(df['ha_high'], df['ha_low'], append=True)
-        df.ta.sma(df['AO_5_34'], 5, append=True)
+        df.ta.adx(high=df['ha_high'], low=df['ha_low'], close=df['ha_close'], length=14, append=True)
+        df.ta.ao(high=df['ha_high'], low=df['ha_low'], append=True)
+        df.ta.sma(close=df['AO_5_34'], length=5, append=True)
         df['AC'] = df['AO_5_34'] - df['SMA_5']
 
         # Execute Strategy
-        plus = df['DMP_14'].iat[-1] - 0.2
-        prev_plus = df['DMP_14'].iat[-2] - 0.2
+        plus = df['DMP_14'].iat[-1]
+        prev_plus = df['DMP_14'].iat[-2]
         ac = df['AC'].iat[-1]
         ac_change = ac - df['AC'].iat[-2]
         open_time_formatted = datetime.datetime.fromtimestamp(int(open_time) / 1000)
         logging.info(
-            '[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f' % (open_time_formatted, TICKER, ha_close, plus, ac))
+            '[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', open_time_formatted, TICKER, ha_close, plus, ac)
 
-        buy = ((plus < 10 or prev_plus < 10) and ac < 0 and ac_change > 0) and not trade_executed
-        sell = (((plus > 20 or prev_plus > 20) and ac > 0 and ac_change <= 0) or (
+        buy = ((plus < 11.8 or prev_plus < 11.8) and ac < 0 and ac_change > 0) and not trade_executed
+        sell = (((plus > 20.2 or prev_plus > 20.2) and ac > 0 and ac_change <= 0) or (
                 ha_close < trade_enter_price * 0.995)) and trade_executed
 
         if buy:
             trade_amount = round((get_asset_balance(MAIN_SYMBOL) * 0.98) / ha_close, 2)
             logging.info('[Alert] Buy %s of %s at price %0.8f', trade_amount, TICKER, ha_close)
-            order = client.create_margin_order(
-                symbol=TICKER,
-                side=SIDE_BUY,
-                type=ORDER_TYPE_MARKET,
-                quantity=trade_amount
-            )
-            if order['status'] == "FILLED":
-                logging.info('[Order] Bought %s of %s at %0.8f', trade_amount, TICKER, ha_close)
-                trade_executed = True
-                trade_enter_price = ha_close
-            else:
-                logging.info('[ERROR] Order to buy %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
+            # order = client.create_margin_order(
+            #     symbol=TICKER,
+            #     side=SIDE_BUY,
+            #     type=ORDER_TYPE_MARKET,
+            #     quantity=trade_amount
+            # )
+            # if order['status'] == "FILLED":
+            #     logging.info('[Order] Bought %s of %s at %0.8f', trade_amount, TICKER, ha_close)
+            #     trade_executed = True
+            #     trade_enter_price = ha_close
+            # else:
+            #     logging.info('[ERROR] Order to buy %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
 
         if sell:
             profit_pct = (ha_close - trade_enter_price) / trade_enter_price * 100
@@ -113,19 +113,19 @@ def process_message(msg):
             formatted_sell_amount = "{:0.0{}f}".format(sell_amount, 2)
             logging.info('[Alert] Sell %s of %s at price %0.8f. Profit: %0.2f%%', formatted_sell_amount, TICKER,
                          ha_close, profit_pct)
-            order = client.create_margin_order(
-                symbol=TICKER,
-                side=SIDE_SELL,
-                type=ORDER_TYPE_MARKET,
-                quantity=formatted_sell_amount
-            )
-            if order['status'] == "FILLED":
-                logging.info('[Order] Sold %s of %s at %0.8f', sell_amount, TICKER, ha_close)
-                trade_executed = False
-                trade_enter_price = 0
-                trade_amount = 0
-            else:
-                logging.info('[ERROR] Order to sell %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
+            # order = client.create_margin_order(
+            #     symbol=TICKER,
+            #     side=SIDE_SELL,
+            #     type=ORDER_TYPE_MARKET,
+            #     quantity=formatted_sell_amount
+            # )
+            # if order['status'] == "FILLED":
+            #     logging.info('[Order] Sold %s of %s at %0.8f', sell_amount, TICKER, ha_close)
+            #     trade_executed = False
+            #     trade_enter_price = 0
+            #     trade_amount = 0
+            # else:
+            #     logging.info('[ERROR] Order to sell %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
 
 
 # Add heiken ashi candles to dataframe
