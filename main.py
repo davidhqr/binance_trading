@@ -88,7 +88,7 @@ def process_message(msg):
 
         buy = ((plus < 11.8 or prev_plus < 11.8) and ac < 0 and ac_change > 0) and not trade_executed
         sell = (((plus > 20.2 or prev_plus > 20.2) and ac > 0 and ac_change <= 0) or (
-                ha_close < trade_enter_price * 0.995)) and trade_executed
+                ha_close < trade_enter_price * 0.997)) and trade_executed
 
         if buy:
             trade_amount = round((get_asset_balance(MAIN_SYMBOL) * 0.98) / ha_close, 2)
