@@ -100,7 +100,7 @@ def process_message(msg):
                 quantity=trade_amount
             )
             if order['status'] == "FILLED":
-                logging.info('[Order] Bought %s of %s at %0.8f', trade_amount, TICKER, ha_close)
+                logging.info('[Order] Bought %s of %s at %0.8f', trade_amount, TICKER, float(order['price']))
                 trade_executed = True
                 trade_enter_price = ha_close
             else:
@@ -119,7 +119,7 @@ def process_message(msg):
                 quantity=formatted_sell_amount
             )
             if order['status'] == "FILLED":
-                logging.info('[Order] Sold %s of %s at %0.8f', sell_amount, TICKER, ha_close)
+                logging.info('[Order] Sold %s of %s at %0.8f', sell_amount, TICKER, float(order['price']))
                 trade_executed = False
                 trade_enter_price = 0
                 trade_amount = 0
