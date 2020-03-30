@@ -29,10 +29,12 @@ df = None
 long_trade = False
 long_loan = 0
 long_price = 0
+long_fill_price = 0
 
 short_trade = False
 short_loan = 0
 short_price = 0
+short_fill_price = 0
 
 logging.basicConfig(filename='binance_trading.log', level=logging.DEBUG, format='[%(asctime)s] %(message)s',
                     datefmt='%d/%m/%Y %H:%M:%S')
@@ -57,7 +59,7 @@ def get_order_avg_price(order):
 
 
 def process_message(msg):
-    global df, long_trade, long_loan, long_price, short_trade, short_loan, short_price
+    global df, long_trade, long_loan, long_price, long_fill_price, short_trade, short_loan, short_price, short_fill_price
     candle = msg['k']
     is_final = candle['x']
     open_time = datetime.datetime.fromtimestamp(int(candle['t']) / 1000)
@@ -149,9 +151,10 @@ def process_message(msg):
             )
 
             if order['status'] == 'FILLED':
-                long_price = get_order_avg_price(order)
+                long_price = ha_close
+                long_fill_price = get_order_avg_price(order)
                 long_trade = True
-                logging.info('[Order] Longed %s of %s at %0.8f', trade_amount, TICKER, long_price)
+                logging.info('[Order] Longed %s of %s at %0.8f', trade_amount, TICKER, long_fill_price)
             else:
                 logging.info('[ERROR] Order to long %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
 
@@ -168,7 +171,7 @@ def process_message(msg):
 
             if order['status'] == 'FILLED':
                 fill_price = get_order_avg_price(order)
-                profit_pct = (fill_price - long_price) / long_price * 100
+                profit_pct = (fill_price - long_fill_price) / long_fill_price * 100
                 logging.info('[Order] Closed long %s of %s at %0.8f. Profit: %0.2f%%', sell_amount, TICKER, fill_price,
                              profit_pct)
                 client.repay_margin_loan(asset=MAIN_SYMBOL, amount=long_loan)
@@ -176,6 +179,7 @@ def process_message(msg):
                 long_trade = False
                 long_loan = 0
                 long_price = 0
+                long_fill_price = 0
             else:
                 logging.info('[ERROR] Order to close long %s of %s at %0.8f was not filled', sell_amount, TICKER,
                              ha_close)
@@ -218,9 +222,10 @@ def process_message(msg):
             )
 
             if order['status'] == 'FILLED':
-                short_price = get_order_avg_price(order)
+                short_price = ha_close
+                short_fill_price = get_order_avg_price(order)
                 short_trade = True
-                logging.info('[Order] Shorted %s of %s at %0.8f', trade_amount, TICKER, short_price)
+                logging.info('[Order] Shorted %s of %s at %0.8f', trade_amount, TICKER, short_fill_price)
             else:
                 logging.info('[ERROR] Order to short %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
 
@@ -236,7 +241,7 @@ def process_message(msg):
 
             if order['status'] == 'FILLED':
                 fill_price = get_order_avg_price(order)
-                profit_pct = (short_price - fill_price) / fill_price * 100
+                profit_pct = (short_fill_price - fill_price) / fill_price * 100
                 logging.info('[Order] Closed short %s of %s at %0.8f. Profit: %0.2f%%', trade_amount, TICKER,
                              fill_price, profit_pct)
                 client.repay_margin_loan(asset=FOREIGN_SYMBOL, amount=short_loan)
@@ -244,6 +249,7 @@ def process_message(msg):
                 short_trade = False
                 short_loan = 0
                 short_price = 0
+                short_fill_price = 0
             else:
                 logging.info('[ERROR] Order to close short %s of %s at %0.8f was not filled', trade_amount, TICKER,
                              ha_close)
