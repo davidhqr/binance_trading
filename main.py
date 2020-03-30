@@ -19,8 +19,8 @@ sys.path.append(vendor_dir)
 import pandas_ta as ta
 
 MAIN_SYMBOL = 'BTC'
-FOREIGN_SYMBOL = 'XTZ'
-TICKER = 'XTZBTC'
+FOREIGN_SYMBOL = 'ZEC'
+TICKER = 'ZECBTC'
 public_key = 'NIVq1rngxerf1OpjY3CJsMCyM580ylkDbe0W833nWiSl3azstCCCB6v9orQMHd3v'
 secret_key = 'MOjRytV4EPCImVp9uRZhoN1cTVA12iETbKUxx92JnoMFFRce97tAdAd2yeAginqc'
 
@@ -90,16 +90,17 @@ def process_message(msg):
         }, ignore_index=True)
 
         # Add indicators
-        df.ta.adx(high=df['ha_high'], low=df['ha_low'], close=df['ha_close'], length=14, append=True)
+        df.ta.adx(high=df['ha_high'], low=df['ha_low'], close=df['ha_close'], length=20, append=True)
         df.ta.ao(high=df['ha_high'], low=df['ha_low'], append=True)
         df.ta.sma(close=df['AO_5_34'], length=5, append=True)
         df['AC'] = df['AO_5_34'] - df['SMA_5']
-        plus = df['DMP_14'].iat[-1]
-        plus_prev = df['DMP_14'].iat[-2]
+        plus = df['DMP_20'].iat[-1]
+        plus_prev = df['DMP_20'].iat[-2]
         plus_change_pct = (plus - plus_prev) / abs(plus_prev) * 100
-        minus = df['DMN_14'].iat[-1]
-        minus_prev = df['DMN_14'].iat[-2]
+        minus = df['DMN_20'].iat[-1]
+        minus_prev = df['DMN_20'].iat[-2]
         minus_change_pct = (minus - minus_prev) / abs(minus_prev) * 100
+        adx = df['ADX_20'].iat[-1]
         ac = df['AC'].iat[-1]
         ac_prev = df['AC'].iat[-2]
         ac_change = ac - ac_prev
@@ -108,33 +109,26 @@ def process_message(msg):
             '[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', open_time, TICKER, ha_close, plus, ac)
 
         # Strategy execution
-        plus_lb = 10.8
-        plus_ub = 20.2
-        long_sl = 0.998
+        plus_lb = 8
+        plus_ub = 24
+        long_sl = 0.94
 
-        # minus conditions
-        long_cond_1 = (plus < plus_ub or plus_prev < plus_lb) and plus > 4.5 and plus_change_pct > 25
+        # plus conditions
+        long_cond_1 = (plus < plus_ub or plus_prev < plus_lb) and plus > 3 and plus_change_pct > 3 and adx > 20
         # ac conditions
-        long_cond_2 = (ac <= 0 or (ac_prev <= 0 and ac < 0.0000009)) and ac_change_pct >= 12
+        long_cond_2 = (ac <= 0 or (ac_prev <= 0 and ac < 0.0000005)) and ac_change_pct >= 12
         # universal conditions
         long_universal = not long_trade and not short_trade
 
         # plus and ac peak
         close_long_cond_1 = (plus > plus_ub or plus_prev > plus_ub) and ac > 0 and ac_change <= 0
-        # plus going back below upper bound
-        close_long_cond_2 = plus_prev > plus_ub >= plus
-        # plus going back below lower bound
-        close_long_cond_3 = plus_prev > plus_lb >= plus
-        # minus crosses above plus
-        close_long_cond_4 = minus >= plus and minus_prev < plus_prev
         # stop loss
-        close_long_cond_5 = close < long_price * long_sl
+        close_long_cond_2 = ha_close < long_price * long_sl
         # universal conditions
         close_long_universal = long_trade
 
         long = long_cond_1 and long_cond_2 and long_universal
-        close_long = (close_long_cond_1 or close_long_cond_2 or close_long_cond_3 or close_long_cond_4
-                      or close_long_cond_5) and close_long_universal
+        close_long = (close_long_cond_1 or close_long_cond_2) and close_long_universal
 
         if long:
             long_loan = float(client.get_max_margin_loan(asset=MAIN_SYMBOL)['amount'])
@@ -184,28 +178,26 @@ def process_message(msg):
                 logging.info('[ERROR] Order to close long %s of %s at %0.8f was not filled', sell_amount, TICKER,
                              ha_close)
 
-        minus_lb = 16
-        minus_ub = 20.5
-        short_sl = 1.002
+        minus_lb = 10
+        minus_ub = 23
+        short_sl = 1.06
 
         # minus conditions
-        short_cond_1 = (minus < minus_lb or minus_prev < minus_lb) and minus > 7 and minus_change_pct > 3
+        short_cond_1 = (minus < minus_lb or minus_prev < minus_lb) and minus > 3 and minus_change_pct > 3
         # ac conditions
-        short_cond_2 = (ac >= 0 or (ac_prev >= 0 and ac > -0.0000009)) and ac_change_pct <= -12
+        short_cond_2 = (ac >= 0 or (ac_prev >= 0 and ac > -0.0000005)) and ac_change_pct <= -12
         # universal conditions
         short_universal = not long_trade and not short_trade
 
         # minus peak and ac bottom
         close_short_cond_1 = (minus > minus_ub or minus_prev > minus_ub) and ac < 0 and ac_change >= 0
-        # plus crosses above minus
-        close_short_cond_2 = plus >= minus and plus_prev < minus_prev
         # stop loss
-        close_short_cond_3 = close > short_price * short_sl
+        close_short_cond_2 = ha_close > short_price * short_sl
         # universal conditions
         close_short_universal = short_trade
 
         short = short_cond_1 and short_cond_2 and short_universal
-        close_short = (close_short_cond_1 or close_short_cond_2 or close_short_cond_3) and close_short_universal
+        close_short = (close_short_cond_1 or close_short_cond_2) and close_short_universal
 
         if short:
             short_loan = float(client.get_max_margin_loan(asset=FOREIGN_SYMBOL)['amount'])
