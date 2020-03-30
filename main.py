@@ -206,7 +206,7 @@ def process_message(msg):
         if short:
             short_loan = float(client.get_max_margin_loan(asset=FOREIGN_SYMBOL)['amount'])
             client.create_margin_loan(asset=FOREIGN_SYMBOL, amount=short_loan)
-            logging.info('[Loan] Loaned %0.8f %s', long_loan, FOREIGN_SYMBOL)
+            logging.info('[Loan] Loaned %0.8f %s', short_loan, FOREIGN_SYMBOL)
 
             trade_amount = round(get_asset_balance(FOREIGN_SYMBOL) * 0.99, 2)
             logging.info('[Alert] Short %s of %s at price %0.8f', trade_amount, TICKER, ha_close)
