@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+import math
 import os
 import sys
 
@@ -24,9 +25,14 @@ public_key = 'NIVq1rngxerf1OpjY3CJsMCyM580ylkDbe0W833nWiSl3azstCCCB6v9orQMHd3v'
 secret_key = 'MOjRytV4EPCImVp9uRZhoN1cTVA12iETbKUxx92JnoMFFRce97tAdAd2yeAginqc'
 
 df = None
-trade_executed = False
-trade_enter_price = 0
-trade_amount = 0
+
+long_trade = False
+long_loan = 0
+long_price = 0
+
+short_trade = False
+short_loan = 0
+short_price = 0
 
 logging.basicConfig(filename='binance_trading.log', level=logging.DEBUG, format='[%(asctime)s] %(message)s',
                     datefmt='%d/%m/%Y %H:%M:%S')
@@ -42,8 +48,16 @@ def get_asset_balance(asset):
         return None
 
 
+def get_order_avg_price(order):
+    fills = order['fills']
+    total_price = 0
+    for fill in fills:
+        total_price += float(fill['price'])
+    return total_price / len(fills)
+
+
 def process_message(msg):
-    global df, trade_executed, trade_enter_price, trade_amount
+    global df, long_trade, long_loan, long_price, short_trade, short_loan, short_price
     candle = msg['k']
     is_final = candle['x']
     open_time = datetime.datetime.fromtimestamp(int(candle['t']) / 1000)
@@ -73,58 +87,166 @@ def process_message(msg):
             'ha_low': ha_low
         }, ignore_index=True)
 
+        # Add indicators
         df.ta.adx(high=df['ha_high'], low=df['ha_low'], close=df['ha_close'], length=14, append=True)
         df.ta.ao(high=df['ha_high'], low=df['ha_low'], append=True)
         df.ta.sma(close=df['AO_5_34'], length=5, append=True)
         df['AC'] = df['AO_5_34'] - df['SMA_5']
-
-        # Execute Strategy
         plus = df['DMP_14'].iat[-1]
-        prev_plus = df['DMP_14'].iat[-2]
+        plus_prev = df['DMP_14'].iat[-2]
+        plus_change_pct = (plus - plus_prev) / abs(plus_prev) * 100
+        minus = df['DMN_14'].iat[-1]
+        minus_prev = df['DMN_14'].iat[-2]
+        minus_change_pct = (minus - minus_prev) / abs(minus_prev) * 100
         ac = df['AC'].iat[-1]
-        ac_change = ac - df['AC'].iat[-2]
+        ac_prev = df['AC'].iat[-2]
+        ac_change = ac - ac_prev
+        ac_change_pct = ac_change / abs(ac_prev) * 100
         logging.info(
             '[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', open_time, TICKER, ha_close, plus, ac)
 
-        buy = ((plus < 11.8 or prev_plus < 11.8) and ac < 0 and ac_change > 0) and not trade_executed
-        sell = (((plus > 20.2 or prev_plus > 20.2) and ac > 0 and ac_change <= 0) or (
-                ha_close < trade_enter_price * 0.997)) and trade_executed
+        # Strategy execution
+        plus_lb = 10.8
+        plus_ub = 20.2
+        long_sl = 0.998
 
-        if buy:
-            trade_amount = round((get_asset_balance(MAIN_SYMBOL) * 0.98) / ha_close, 2)
-            logging.info('[Alert] Buy %s of %s at price %0.8f', trade_amount, TICKER, ha_close)
+        # minus conditions
+        long_cond_1 = (plus < plus_ub or plus_prev < plus_lb) and plus > 4.5 and plus_change_pct > 25
+        # ac conditions
+        long_cond_2 = (ac <= 0 or (ac_prev <= 0 and ac < 0.0000009)) and ac_change_pct >= 12
+        # universal conditions
+        long_universal = not long_trade and not short_trade
+
+        # plus and ac peak
+        close_long_cond_1 = (plus > plus_ub or plus_prev > plus_ub) and ac > 0 and ac_change <= 0
+        # plus going back below upper bound
+        close_long_cond_2 = plus_prev > plus_ub >= plus
+        # plus going back below lower bound
+        close_long_cond_3 = plus_prev > plus_lb >= plus
+        # minus crosses above plus
+        close_long_cond_4 = minus >= plus and minus_prev < plus_prev
+        # stop loss
+        close_long_cond_5 = close < long_price * long_sl
+        # universal conditions
+        close_long_universal = long_trade
+
+        long = long_cond_1 and long_cond_2 and long_universal
+        close_long = (close_long_cond_1 or close_long_cond_2 or close_long_cond_3 or close_long_cond_4
+                      or close_long_cond_5) and close_long_universal
+
+        if long:
+            long_loan = float(client.get_max_margin_loan(asset=MAIN_SYMBOL)['amount'])
+            client.create_margin_loan(asset=MAIN_SYMBOL, amount=long_loan)
+            logging.info('[Loan] Loaned %0.8f of %s', long_loan, MAIN_SYMBOL)
+
+            trade_amount = round((get_asset_balance(MAIN_SYMBOL) * 0.99) / ha_close, 2)
+            logging.info('[Alert] Long %s of %s at price %0.8f', trade_amount, TICKER, ha_close)
             order = client.create_margin_order(
                 symbol=TICKER,
                 side=SIDE_BUY,
                 type=ORDER_TYPE_MARKET,
                 quantity=trade_amount
             )
-            if order['status'] == "FILLED":
-                logging.info('[Order] Bought %s of %s at %0.8f', trade_amount, TICKER, float(order['price']))
-                trade_executed = True
-                trade_enter_price = ha_close
-            else:
-                logging.info('[ERROR] Order to buy %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
 
-        if sell:
-            profit_pct = (ha_close - trade_enter_price) / trade_enter_price * 100
+            if order['status'] == 'FILLED':
+                long_price = get_order_avg_price(order)
+                long_trade = True
+                logging.info('[Order] Longed %s of %s at %0.8f', trade_amount, TICKER, long_price)
+            else:
+                logging.info('[ERROR] Order to long %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
+
+        if close_long:
             sell_amount = get_asset_balance(FOREIGN_SYMBOL) // 0.01 * 0.01  # round down to 2 decimals
-            formatted_sell_amount = "{:0.0{}f}".format(sell_amount, 2)
-            logging.info('[Alert] Sell %s of %s at price %0.8f. Profit: %0.2f%%', formatted_sell_amount, TICKER,
-                         ha_close, profit_pct)
+            formatted_sell_amount = '{:0.0{}f}'.format(sell_amount, 2)
+            logging.info('[Alert] Close long %s of %s at price %0.8f', formatted_sell_amount, TICKER, ha_close)
             order = client.create_margin_order(
                 symbol=TICKER,
                 side=SIDE_SELL,
                 type=ORDER_TYPE_MARKET,
                 quantity=formatted_sell_amount
             )
-            if order['status'] == "FILLED":
-                logging.info('[Order] Sold %s of %s at %0.8f', sell_amount, TICKER, float(order['price']))
-                trade_executed = False
-                trade_enter_price = 0
-                trade_amount = 0
+
+            if order['status'] == 'FILLED':
+                fill_price = get_order_avg_price(order)
+                profit_pct = (fill_price - long_price) / long_price * 100
+                logging.info('[Order] Closed long %s of %s at %0.8f. Profit: %0.2f%%', sell_amount, TICKER, fill_price,
+                             profit_pct)
+                client.repay_margin_loan(asset=MAIN_SYMBOL, amount=long_loan)
+                logging.info('[Loan] Repaid %0.8f of %s', long_loan, MAIN_SYMBOL)
+                long_trade = False
+                long_loan = 0
+                long_price = 0
             else:
-                logging.info('[ERROR] Order to sell %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
+                logging.info('[ERROR] Order to close long %s of %s at %0.8f was not filled', sell_amount, TICKER,
+                             ha_close)
+
+        minus_lb = 16
+        minus_ub = 20.5
+        short_sl = 1.002
+
+        # minus conditions
+        short_cond_1 = (minus < minus_lb or minus_prev < minus_lb) and minus > 7 and minus_change_pct > 3
+        # ac conditions
+        short_cond_2 = (ac >= 0 or (ac_prev >= 0 and ac > -0.0000009)) and ac_change_pct <= -12
+        # universal conditions
+        short_universal = not long_trade and not short_trade
+
+        # minus peak and ac bottom
+        close_short_cond_1 = (minus > minus_ub or minus_prev > minus_ub) and ac < 0 and ac_change >= 0
+        # plus crosses above minus
+        close_short_cond_2 = plus >= minus and plus_prev < minus_prev
+        # stop loss
+        close_short_cond_3 = close > short_price * short_sl
+        # universal conditions
+        close_short_universal = short_trade
+
+        short = short_cond_1 and short_cond_2 and short_universal
+        close_short = (close_short_cond_1 or close_short_cond_2 or close_short_cond_3) and close_short_universal
+
+        if short:
+            short_loan = float(client.get_max_margin_loan(asset=FOREIGN_SYMBOL)['amount'])
+            client.create_margin_loan(asset=FOREIGN_SYMBOL, amount=short_loan)
+            logging.info('[Loan] Loaned %0.8f %s', long_loan, FOREIGN_SYMBOL)
+
+            trade_amount = round(get_asset_balance(FOREIGN_SYMBOL) * 0.99, 2)
+            logging.info('[Alert] Short %s of %s at price %0.8f', trade_amount, TICKER, ha_close)
+            order = client.create_margin_order(
+                symbol=TICKER,
+                side=SIDE_SELL,
+                type=ORDER_TYPE_MARKET,
+                quantity=trade_amount
+            )
+
+            if order['status'] == 'FILLED':
+                short_price = get_order_avg_price(order)
+                short_trade = True
+                logging.info('[Order] Shorted %s of %s at %0.8f', trade_amount, TICKER, short_price)
+            else:
+                logging.info('[ERROR] Order to short %s of %s at %0.8f was not filled', trade_amount, TICKER, ha_close)
+
+        if close_short:
+            trade_amount = math.ceil(short_loan)
+            logging.info('[Alert] Close short %s of %s at price %0.8f', trade_amount, TICKER, ha_close)
+            order = client.create_margin_order(
+                symbol=TICKER,
+                side=SIDE_BUY,
+                type=ORDER_TYPE_MARKET,
+                quantity=trade_amount
+            )
+
+            if order['status'] == 'FILLED':
+                fill_price = get_order_avg_price(order)
+                profit_pct = (short_price - fill_price) / fill_price * 100
+                logging.info('[Order] Closed short %s of %s at %0.8f. Profit: %0.2f%%', trade_amount, TICKER,
+                             fill_price, profit_pct)
+                client.repay_margin_loan(asset=FOREIGN_SYMBOL, amount=short_loan)
+                logging.info('[Loan] Repaid %0.8f of %s', short_loan, FOREIGN_SYMBOL)
+                short_trade = False
+                short_loan = 0
+                short_price = 0
+            else:
+                logging.info('[ERROR] Order to close short %s of %s at %0.8f was not filled', trade_amount, TICKER,
+                             ha_close)
 
 
 # Add heiken ashi candles to dataframe
@@ -142,7 +264,7 @@ def add_heiken_ashi():
 
 
 # Run program
-logging.info("Starting Binance trading bot")
+logging.info('Starting Binance trading bot')
 client = Client(public_key, secret_key)
 
 # Load historical candles into dataframe
@@ -157,13 +279,7 @@ df['low'] = df['low'].astype(float)
 df['close'] = df['close'].astype(float)
 df['volume'] = df['volume'].astype(float)
 df['close_time'] = df['close_time'].apply(lambda x: datetime.datetime.fromtimestamp(int(x) / 1000))
-
-# add heiken ashi candles and indicators
 add_heiken_ashi()
-df.ta.adx(high=df['ha_high'], low=df['ha_low'], close=df['ha_close'], length=14, append=True)
-df.ta.ao(high=df['ha_high'], low=df['ha_low'], append=True)
-df.ta.sma(close=df['AO_5_34'], length=5, append=True)
-df['AC'] = df['AO_5_34'] - df['SMA_5']
 
 logging.info('[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', df['open_time'].iat[-1], TICKER,
              df['ha_close'].iat[-1], df['DMP_14'].iat[-1], df['AC'].iat[-1])
@@ -171,5 +287,5 @@ logging.info('[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', df['open_time'].
 # Start listening for live candles
 bm = BinanceSocketManager(client, user_timeout=60)
 conn_key = bm.start_kline_socket(TICKER, process_message, interval=KLINE_INTERVAL_5MINUTE)
-logging.info("Starting websocket")
+logging.info('Starting websocket')
 bm.start()
