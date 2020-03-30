@@ -281,9 +281,6 @@ df['volume'] = df['volume'].astype(float)
 df['close_time'] = df['close_time'].apply(lambda x: datetime.datetime.fromtimestamp(int(x) / 1000))
 add_heiken_ashi()
 
-logging.info('[%s] %s | Close: %0.8f | +DI: %0.8f | AC: %0.8f', df['open_time'].iat[-1], TICKER,
-             df['ha_close'].iat[-1], df['DMP_14'].iat[-1], df['AC'].iat[-1])
-
 # Start listening for live candles
 bm = BinanceSocketManager(client, user_timeout=60)
 conn_key = bm.start_kline_socket(TICKER, process_message, interval=KLINE_INTERVAL_5MINUTE)
