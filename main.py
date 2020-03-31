@@ -114,7 +114,7 @@ def process_message(msg):
         long_sl = 0.94
 
         # plus conditions
-        long_cond_1 = (plus < plus_ub or plus_prev < plus_lb) and plus > 3 and plus_change_pct > 3 and adx > 20
+        long_cond_1 = (plus < plus_lb or plus_prev < plus_lb) and plus > 3 and plus_change_pct > 3 and adx > 20
         # ac conditions
         long_cond_2 = (ac <= 0 or (ac_prev <= 0 and ac < 0.0000005)) and ac_change_pct >= 12
         # universal conditions
