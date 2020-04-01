@@ -183,7 +183,7 @@ def process_message(msg):
         short_sl = 1.06
 
         # minus conditions
-        short_cond_1 = (minus < minus_lb or minus_prev < minus_lb) and minus > 3 and minus_change_pct > 3
+        short_cond_1 = (minus < minus_lb or minus_prev < minus_lb) and minus > 3 and minus_change_pct > 3 and adx > 20
         # ac conditions
         short_cond_2 = (ac >= 0 or (ac_prev >= 0 and ac > -0.0000005)) and ac_change_pct <= -12
         # universal conditions
