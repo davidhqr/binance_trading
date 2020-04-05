@@ -111,7 +111,7 @@ def process_message(msg):
         # Strategy execution
         plus_lb = 8
         plus_ub = 24
-        long_sl = 0.94
+        long_sl = 0.96
 
         # plus conditions
         long_cond_1 = (plus < plus_lb or plus_prev < plus_lb) and plus > 3 and plus_change_pct > 3 and adx > 20
@@ -178,9 +178,9 @@ def process_message(msg):
                 logging.info('[ERROR] Order to close long %s of %s at %0.8f was not filled', sell_amount, TICKER,
                              ha_close)
 
-        minus_lb = 10
-        minus_ub = 23
-        short_sl = 1.06
+        minus_lb = 8
+        minus_ub = 24
+        short_sl = 1.04
 
         # minus conditions
         short_cond_1 = (minus < minus_lb or minus_prev < minus_lb) and minus > 3 and minus_change_pct > 3 and adx > 20
