@@ -110,8 +110,8 @@ def process_message(msg):
 
         # Strategy execution
         plus_lb = 8
-        plus_ub = 24
-        long_sl = 0.96
+        plus_ub = 18
+        long_sl = 0.99
 
         # plus conditions
         long_cond_1 = (plus < plus_lb or plus_prev < plus_lb) and plus > 3 and plus_change_pct > 3 and adx > 20
@@ -123,7 +123,7 @@ def process_message(msg):
         # plus and ac peak
         close_long_cond_1 = (plus > plus_ub or plus_prev > plus_ub) and ac > 0 and ac_change <= 0
         # stop loss
-        close_long_cond_2 = ha_close < long_price * long_sl
+        close_long_cond_2 = ha_close < long_fill_price * long_sl
         # universal conditions
         close_long_universal = long_trade
 
@@ -179,8 +179,8 @@ def process_message(msg):
                              ha_close)
 
         minus_lb = 8
-        minus_ub = 24
-        short_sl = 1.04
+        minus_ub = 18
+        short_sl = 1.01
 
         # minus conditions
         short_cond_1 = (minus < minus_lb or minus_prev < minus_lb) and minus > 3 and minus_change_pct > 3 and adx > 20
@@ -192,7 +192,7 @@ def process_message(msg):
         # minus peak and ac bottom
         close_short_cond_1 = (minus > minus_ub or minus_prev > minus_ub) and ac < 0 and ac_change >= 0
         # stop loss
-        close_short_cond_2 = ha_close > short_price * short_sl
+        close_short_cond_2 = ha_close > short_fill_price * short_sl
         # universal conditions
         close_short_universal = short_trade
 
